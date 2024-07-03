@@ -51,7 +51,7 @@ public class PacketData {
     }
 
     public void set(int x0, int x1, int x2, int x3) {
-        setLength(3);
+        setLength(4);
         _time = System.currentTimeMillis();
         _data[0] = (byte) x0;
         _data[1] = (byte) x1;
@@ -60,7 +60,7 @@ public class PacketData {
     }
 
     public void set(int x0, int x1, int x2, int x3, int x4) {
-        setLength(3);
+        setLength(5);
         _time = System.currentTimeMillis();
         _data[0] = (byte) x0;
         _data[1] = (byte) x1;
