@@ -28,7 +28,7 @@ public abstract class OnMidiInputEventStreamForBLE implements OnMidiInputEventLi
         byte[] data = _reuse;
         data[0] = (byte)command;
         data[1] = (byte)data1;
-        onReceivedData(sender, data, 0, 3);
+        onReceivedData(sender, data, 0, 2);
     }
     protected final void onReceivedData(@NonNull MidiInputDevice sender, int command, int data1, int data2) {
         byte[] data = _reuse;

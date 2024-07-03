@@ -19,7 +19,7 @@ import java.util.Set;
 
 /**
  * 普通のAndroidMIDIAPIを用いる
- * 複数デバイス・アプリサービスに対応ドDriverの一種
+ * 複数デバイス・アプリサービスに対応Driverの一種
  */
 public class MidiNetDriverDefault extends MidiNetDriver {
     static String TAG = "MidiNetDriverDefault";
