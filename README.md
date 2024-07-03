@@ -1,7 +1,7 @@
 # midinet
 Java Midi Driver Wrapper
 
-Wrapper for kshoji's libraries (~2024/7)
+Wrapper for 2 libraries (~2024/7) made by kshoji
 
 Need 2 package for this repository
 
