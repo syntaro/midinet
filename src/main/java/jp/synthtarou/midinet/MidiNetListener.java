@@ -5,13 +5,13 @@ package jp.synthtarou.midinet;
  * 実験的にすべてのレイヤーを1つにまとめたら、正解だった
  */
 public interface MidiNetListener {
-    void onDriverAdded(MidiNetDriver driver);
-    void onDriverRemoved(MidiNetDriver driver);
-    void onDeviceDectected(MidiNetDriver driver, MidiNetDeviceInfo info);
-    void onDeviceLostDectected(MidiNetDriver driver, MidiNetDeviceInfo info);
+    void onServiceActivated(MidiNetService service);
+    void onServiceDeactivated(MidiNetService service);
+    void onDeviceDectected(MidiNetService service, MidiNetDeviceInfo info);
+    void onDeviceLostDectected(MidiNetService service, MidiNetDeviceInfo info);
 
-    void onWriteOpened(MidiNetDriver driver, MidiNetDeviceInfo info);
-    void onWriteClosed(MidiNetDriver driver, MidiNetDeviceInfo info);
-    void onReaderOpened(MidiNetDriver driver, MidiNetDeviceInfo info);
-    void onReaderClosed(MidiNetDriver driver, MidiNetDeviceInfo info);
+    void onWriteOpened(MidiNetService service, MidiNetDeviceInfo info);
+    void onWriteClosed(MidiNetService service, MidiNetDeviceInfo info);
+    void onReaderOpened(MidiNetService service, MidiNetDeviceInfo info);
+    void onReaderClosed(MidiNetService service, MidiNetDeviceInfo info);
 }

@@ -1,10 +1,12 @@
 package jp.synthtarou.midinet;
 
 import android.app.Activity;
-import android.util.Log;
 
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Comparator;
 import java.util.LinkedList;
+import java.util.List;
 
 /**
  * このパッケージを司るマネージャー
@@ -13,45 +15,45 @@ import java.util.LinkedList;
 public class MidiNetManager {
     static String TAG = "MidiNetManager";
     public Activity _context;
-    MidiNetDriverDefault driver1;
-    MidiNetDriverBluetooth driver2;
-    MidiNetDriverUSB driver3;
-    MidiNetDriverPeripheral driver4;
+    MidiNetServiceDefault service1;
+    MidiNetServiceBluetooth service2;
+    MidiNetServiceUSB service3;
+    MidiNetServicePeripheral service4;
 
-    public MidiNetDriverDefault getDriverAndroid() {
-        return driver1;
+    public MidiNetServiceDefault getServiceAndroid() {
+        return service1;
+    }
+    public MidiNetServiceBluetooth getServiceBluetooth() {
+        return service2;
+    }
+    public MidiNetServiceUSB getServiceUSB() {
+        return service3;
     }
 
-    public MidiNetDriverBluetooth getDriverBluetooth() {
-        return driver2;
-    }
-    public MidiNetDriverUSB getDriverUSB() {
-        return driver3;
-    }
-
-    public MidiNetDriverPeripheral getDriverPeripheral() { return driver4; }
+    public MidiNetServicePeripheral getServicePeripheral() { return service4; }
 
     public MidiNetManager(Activity context) {
         _context = context;
-        driver1 = new MidiNetDriverDefault(this, context);
-        driver2 = new MidiNetDriverBluetooth(this, context);
-        driver3 = new MidiNetDriverUSB(this, context);
-        driver4 = new MidiNetDriverPeripheral(this, context);
-        addDriver(driver1);
-        addDriver(driver2);
-        addDriver(driver3);
-        addDriver(driver4);
+        //addListener(new MidiNetListenerForDebug(true));
+        service1 = new MidiNetServiceDefault(this, context);
+        service2 = new MidiNetServiceBluetooth(this, context);
+        service3 = new MidiNetServiceUSB(this, context);
+        service4 = new MidiNetServicePeripheral(this, context);
+        addService(service1);
+        addService(service2);
+        addService(service3);
+        addService(service4);
     }
 
-    public void terminateAllDrivers() {
-        LinkedList<MidiNetDriver> copy;
+    public void terminateAllServices() {
+        LinkedList<MidiNetService> copy;
         synchronized (this) {
-            copy = new LinkedList<>(_installedDriver);
-            _installedDriver.clear();
+            copy = new LinkedList<>(_installedServices);
+            _installedServices.clear();
         }
-        for (MidiNetDriver seek : copy) {
+        for (MidiNetService seek : copy) {
             try {
-                seek.terminate();
+                seek.terminateAllDevices();
             }
             catch(Throwable ex) {
 
@@ -61,120 +63,176 @@ public class MidiNetManager {
 
     public ArrayList<MidiNetDeviceInfo> listAllDevices() {
         ArrayList<MidiNetDeviceInfo> result = new ArrayList<>();
-        for (MidiNetDriver seek : _installedDriver) {
-            for (MidiNetDeviceInfo info : seek.listDevice()) {
-                result.add(info);
+
+        for (MidiNetService seek : _installedServices) {
+            ArrayList<MidiNetDeviceInfo> seg = new ArrayList<>();
+            for (MidiNetDeviceInfo info : seek._listDevices) {
+                seg.add(info);
             }
+            Collections.sort(seg, new Comparator<MidiNetDeviceInfo>() {
+                @Override
+                public int compare(MidiNetDeviceInfo o1, MidiNetDeviceInfo o2) {
+                    int a1 = o1.getSortOrder();
+                    int a2 = o2.getSortOrder();
+                    if (a1 == a2) {
+                        return o1.getName().compareTo(o2.getName());
+                    }
+                    return a1 < a2 ? -1 : 1;
+                }
+            });
+            result.addAll(seg);
         }
         return result;
     }
 
-    ArrayList<MidiNetDriver> _installedDriver = new ArrayList<>();
-    ArrayList<MidiNetListener> _listeners = new ArrayList<>();
-    public synchronized void addDriver(MidiNetDriver driver) {
-        if (_installedDriver.contains(driver)) {
-            return;
+    List<MidiNetService> _installedServices = Collections.synchronizedList(new ArrayList<>());
+    List<MidiNetListener> _listeners = Collections.synchronizedList(new ArrayList<>());
+
+    public void addService(MidiNetService service) {
+        synchronized (_installedServices) {
+            if (_installedServices.contains(service)) {
+                return;
+            }
+            _installedServices.add(service);
         }
-        _installedDriver.add(driver);
-        fireDriverAddred(driver);
+        fireServiceAddred(service);
     }
 
-    public synchronized void removeDriver(MidiNetDriver driver) {
-        if (_installedDriver.contains(driver)) {
-            _installedDriver.remove(driver);
+    public synchronized void removeService(MidiNetService service) {
+        synchronized (_installedServices) {
+            if (_installedServices.contains(service)) {
+                _installedServices.remove(service);
+            }
+        }
+        fireDriverRemoved(service);
+    }
 
-            fireDriverRemoved(driver);
+    public void addListener(MidiNetListener listener) {
+        synchronized (_listeners) {
+            if (_listeners.contains(listener)) {
+                return;
+            }
+            _listeners.add(listener);
         }
     }
 
-    public synchronized void addListener(MidiNetListener listener) {
-        if (_listeners.contains(listener)) {
-            return;
-        }
-        _listeners.add(listener);
-    }
-
-    public synchronized void removeListener(MidiNetListener listener) {
+    public void removeListener(MidiNetListener listener) {
         _listeners.remove(listener);
     }
     static boolean _useInfo = true;
 
     public void stopAllScan() {
         ArrayList<MidiNetDeviceInfo> result = new ArrayList<>();
-        for (MidiNetDriver driver : _installedDriver) {
-            driver.stopScan();
+        synchronized (_installedServices) {
+            for (MidiNetService driver : _installedServices) {
+                driver.stopDeepScan();
+            }
         }
     }
 
-    public void fireDriverAddred(MidiNetDriver driver) {
-        if (_useInfo) Log.i(TAG, "global onDriverAddred " + driver);
-        for (MidiNetListener listener : _listeners) {
-            listener.onDriverAdded(driver);
+    public void fireServiceAddred(MidiNetService esrvice) {
+        ArrayList<MidiNetListener> copy;
+        synchronized (_listeners) {
+            copy = new ArrayList<>(_listeners);
+        }
+        for (MidiNetListener listener : copy) {
+            listener.onServiceActivated(esrvice);
         }
     }
 
-    public void fireDriverRemoved(MidiNetDriver driver) {
-        if (_useInfo) Log.i(TAG, "global onDriverRemoved " + driver);
-        for (MidiNetListener listener : _listeners) {
-            listener.onDriverRemoved(driver);
+    public void fireDriverRemoved(MidiNetService service) {
+        ArrayList<MidiNetListener> copy;
+        synchronized (_listeners) {
+            copy = new ArrayList<>(_listeners);
+        }
+        for (MidiNetListener listener : copy) {
+            listener.onServiceDeactivated(service);
         }
     }
 
-    public void fireDeviceDetected(MidiNetDriver driver, MidiNetDeviceInfo info) {
-        if (_useInfo) Log.i(TAG, "global fireDeviceDetected " + info._name);
-        for (MidiNetListener listener : _listeners) {
-            listener.onDeviceDectected(driver, info);
+    public void fireDeviceDetected(MidiNetService service, MidiNetDeviceInfo info) {
+        ArrayList<MidiNetListener> copy;
+        synchronized (_listeners) {
+            copy = new ArrayList<>(_listeners);
+        }
+        for (MidiNetListener listener : copy) {
+            listener.onDeviceDectected(service, info);
         }
     }
 
-    public void fireDeviceLostDectected(MidiNetDriver driver, MidiNetDeviceInfo info) {
-        if (_useInfo) Log.i(TAG, "global fireDeviceLostDectected " + info._name);
-        for (MidiNetListener listener : _listeners) {
-            listener.onDeviceLostDectected(driver, info);
+    public void fireDeviceLostDectected(MidiNetService service, MidiNetDeviceInfo info) {
+        ArrayList<MidiNetListener> copy;
+        synchronized (_listeners) {
+            copy = new ArrayList<>(_listeners);
+        }
+        for (MidiNetListener listener : copy) {
+            listener.onDeviceLostDectected(service, info);
         }
     }
 
-    public void fireWriterOpened(MidiNetDriver driver, MidiNetDeviceInfo info) {
-        if (_useInfo) Log.i(TAG, "global onWriteOpened " + info._name);
-        for (MidiNetListener listener : _listeners) {
-            listener.onWriteOpened(driver, info);
+    public void fireWriterOpened(MidiNetService service, MidiNetDeviceInfo info) {
+        ArrayList<MidiNetListener> copy;
+        synchronized (_listeners) {
+            copy = new ArrayList<>(_listeners);
+        }
+        for (MidiNetListener listener : copy) {
+            listener.onWriteOpened(service, info);
         }
     }
 
-    public void fireWriterClosed(MidiNetDriver driver, MidiNetDeviceInfo info) {
-        if (_useInfo) Log.i(TAG, "global onWriteClosed " + info._name);
-        for (MidiNetListener listener : _listeners) {
-            listener.onWriteClosed(driver, info);
+    public void fireWriterClosed(MidiNetService service, MidiNetDeviceInfo info) {
+        ArrayList<MidiNetListener> copy;
+        synchronized (_listeners) {
+            copy = new ArrayList<>(_listeners);
+        }
+        for (MidiNetListener listener : copy) {
+            listener.onWriteClosed(service, info);
         }
     }
 
-    public void fireReaderOpened(MidiNetDriver driver, MidiNetDeviceInfo info) {
-        if (_useInfo) Log.i(TAG, "global onReaderOpened " + info._name);
-        for (MidiNetListener listener : _listeners) {
-            listener.onReaderOpened(driver, info);
+    public void fireReaderOpened(MidiNetService service, MidiNetDeviceInfo info) {
+        ArrayList<MidiNetListener> copy;
+        synchronized (_listeners) {
+            copy = new ArrayList<>(_listeners);
+        }
+        for (MidiNetListener listener : copy) {
+            listener.onReaderOpened(service, info);
         }
     }
 
-    public void fireReaderClosed(MidiNetDriver driver, MidiNetDeviceInfo info) {
-        if (_useInfo) Log.i(TAG, "global onReaderClosed " + info._name);
-        for (MidiNetListener listener : _listeners) {
-            listener.onReaderClosed(driver, info);
+    public void fireReaderClosed(MidiNetService service, MidiNetDeviceInfo info) {
+        ArrayList<MidiNetListener> copy;
+        synchronized (_listeners) {
+            copy = new ArrayList<>(_listeners);
+        }
+        for (MidiNetListener listener : copy) {
+            listener.onReaderClosed(service, info);
         }
     }
 
     public void postEnumerateDevicesForAll() {
-        for (MidiNetDriver seek : _installedDriver) {
-            seek.postEnumerateDevice();;
+        ArrayList<MidiNetService> copy;
+        synchronized (_installedServices) {
+            copy = new ArrayList<>(_installedServices);
+        }
+        synchronized (copy) {
+            for (MidiNetService seek : copy) {
+                seek.startEnumerate();;
+            }
         }
     }
 
-    MidiNetStream _globalReader;
+    MidiNetStream _baseStream;
 
+    public void setBaseStream(MidiNetStream stream) {
+        _baseStream = stream;
+    }
+
+    /*
+    MidiNetStream _globalReader;
     public void setGlobalReader(MidiNetStream stream) {
         _globalReader = stream;
     }
-
-    public MidiNetStream getGlobalReader() {
-        return _globalReader;
-    }
+     */
 }
+

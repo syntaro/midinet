@@ -1,5 +1,7 @@
 package jp.synthtarou.midinet;
 
+import androidx.annotation.NonNull;
+
 /**
  * 人間の目からみたデバイスの情報
  * ドライバーのしたのデバイスがぶらさがるイメージ
@@ -13,10 +15,10 @@ public interface MXDevice {
     boolean prepareInput(MidiNetStream stream);
     void closeInput();
 
-    boolean isDisconnected();
     boolean prepareOutput();
-    void processDataBytes(byte[] data, int offset, int count);
+    void processOutput(@NonNull byte[] data, int offset, int count);
+    void processInput(@NonNull  byte[] data, int offset, int count);
 
-    public void markBreak();
+    void recordIOException(Throwable ex);
     void closeOutput();
 }

@@ -1,34 +1,30 @@
 package jp.synthtarou.midinet;
 
+import android.util.Log;
+
 import androidx.annotation.NonNull;
 
 /**
  * 開く前のデバイスの情報、ここから開くこともできる
  * 開いたあとのオブジェクトをわけることで、切断からの再接続も簡単になる
  */
-public class MidiNetDeviceInfo implements MXDevice {
-    public MidiNetDeviceInfo(@NonNull MidiNetDriver driver, @NonNull String name, @NonNull String uuid, Object info) {
-        _driver = driver;
+public abstract class MidiNetDeviceInfo implements MXDevice {
+    public String TAG = "MidiNetDeviceInfo";
+
+    public MidiNetDeviceInfo(@NonNull MidiNetService service, @NonNull String name, @NonNull String uuid) {
+        _service = service;
         _name = name;
-        _uuidInDriver = uuid;
-        _infoObject = info;
+        _uuidInService = uuid;
+        _launching = false;
     }
 
     public boolean _hasInput = true;
     public boolean _hasOutput = true;
-    boolean _disconnected;
+    boolean _launching;
     String _name;
-    public final MidiNetDriver _driver;
-    final String _uuidInDriver;
-
-    int _portCountWriter;
-    int _portCountReder;
-
-    public void terminate() {
-    }
-
-    public Object _infoObject;
-    public Object _connectedObject;
+    public final MidiNetService _service;
+    final String _uuidInService;
+    Throwable _ioException;
 
     @Override
     public boolean hasOutput() {
@@ -45,55 +41,66 @@ public class MidiNetDeviceInfo implements MXDevice {
     }
 
     @Override
-    public boolean prepareInput(MidiNetStream stream) {
-        if (_onRead == null) {
-            _onRead = _driver.getOrCreateReader(this, (data, offset, count) -> {
-                stream.receivedData(data, offset, count);
-            });
-        }
-        return _onRead != null;
-    }
+    public abstract void processOutput(@NonNull byte[] data, int offset, int count);
 
     @Override
-    public void closeInput() {
-        //_reader.terminate();;
-    }
-
-    @Override
-    public boolean isDisconnected() {
-        return _disconnected;
-    }
-
-    @Override
-    public boolean prepareOutput() {
-        if (_onWrite == null) {
-            _onWrite = _driver.getOrCreateWriter(this);
-        }
-        return _onWrite != null;
-    }
-
-    @Override
-    public void processDataBytes(byte[] data, int offset, int count) {
-        try {
-            _onWrite.receivedData(data, offset, count);
-        }catch(Throwable ex) {
-            markBreak();
+    public void processInput(@NonNull byte[] data, int offset, int count){
+        if (_inputOpened) {
+            if (_onRead != null) {
+                _onRead.receivedData(data, offset, count);
+            }
         }
     }
 
     @Override
-    public void markBreak() {
-        _disconnected = true;
+    public void recordIOException(Throwable ex) {
+        Log.e(TAG, "recordIOException " + this, ex);
+        _ioException = ex;
+        closeInput();
+        closeOutput();
+        closeDeviceConnection();
     }
-
-    @Override
-    public void closeOutput() {
-    //
-    }
-
-    public Object _connectedPort;
 
     public MidiNetStream _onRead;
-    public MidiNetStream _onWrite;
 
+    public abstract boolean prepareInput(MidiNetStream handler);
+    public abstract boolean prepareOutput();
+
+    public void fireOpened(boolean isWriter) {
+        if (isWriter) {
+            _service._manager.fireWriterOpened(_service, this);
+        }else {
+            _service._manager.fireReaderOpened(_service, this);
+        }
+    }
+
+    //disconnect or lost both
+    public void fireClosed(boolean isWriter) {
+        if (isWriter) {
+            _service._manager.fireWriterClosed(_service, this);
+        }else {
+            _service._manager.fireReaderClosed(_service, this);
+        }
+    }
+
+    boolean _inputOpened = false;
+    boolean _outputOpened = false;
+
+    public void closeInput() {
+        _inputOpened = false;
+        _service._manager.fireReaderClosed(_service, this);
+    }
+
+    public void closeOutput() {
+        _outputOpened = false;
+        _service._manager.fireWriterClosed(_service, this);
+    }
+
+    public abstract void closeDeviceConnection();
+
+    public String toString() {
+        return _name;
+    }
+
+    public abstract int getSortOrder();
 }
