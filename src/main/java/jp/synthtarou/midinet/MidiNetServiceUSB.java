@@ -5,8 +5,6 @@ import android.hardware.usb.UsbDevice;
 
 import androidx.annotation.NonNull;
 
-//import org.star_advance.midimixer.libs.midi.MXMessageBus;
-
 import java.util.HashSet;
 
 import jp.kshoji.driver.midi.device.MidiInputDevice;

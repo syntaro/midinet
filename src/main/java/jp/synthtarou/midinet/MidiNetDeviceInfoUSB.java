@@ -21,7 +21,7 @@ import jp.synthtarou.midinet.patchlib.OnMidiInputEventStreamForUSB;
  * でっちあげる
  */
 public class MidiNetDeviceInfoUSB extends MidiNetDeviceInfo {
-    static String TAG= "MidiNetServiceUSBDevice";
+    static String TAG= "MidiNetDeviceInfoUSB";
     Context _context;
 
     public MidiNetDeviceInfoUSB(@NonNull MidiNetServiceUSB driver, Context context) {

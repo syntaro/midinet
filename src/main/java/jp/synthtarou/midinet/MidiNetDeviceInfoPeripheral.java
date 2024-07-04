@@ -17,7 +17,7 @@ import jp.kshoji.blemidi.device.MidiOutputDevice;
  * 公開用の名前などを保持していないので、でっちあげる
  */
 public class MidiNetDeviceInfoPeripheral extends MidiNetDeviceInfo {
-    static String TAG = "MidiNetServicePeripheralDevice";
+    static String TAG = "MidiNetDeviceInfoPeripheral";
     Context _context;
     BleMidiPeripheralProvider _provider;
 

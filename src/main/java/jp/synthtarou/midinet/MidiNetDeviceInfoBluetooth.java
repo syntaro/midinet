@@ -58,12 +58,20 @@ public class MidiNetDeviceInfoBluetooth extends MidiNetDeviceInfo {
         return false;
     }
 
+    long _prepared;
+
     public void prepareDevice() {
-        MidiNetServiceBluetooth service = (MidiNetServiceBluetooth) _service;
-        DeviceAttachListener listener = new DeviceAttachListener();
-        service._provider.setOnMidiDeviceAttachedListener(listener);
-        service._provider.connectGatt(_bluetooth);
-        //多重起動してしまうが、問題なさそうな？
+        if (System.currentTimeMillis() > _prepared + 1000) {
+            if (_inputOpened || _outputOpened) {
+                return;
+            }
+            //多重起動対策？
+            _prepared = System.currentTimeMillis();
+            MidiNetServiceBluetooth service = (MidiNetServiceBluetooth) _service;
+            DeviceAttachListener listener = new DeviceAttachListener();
+            service._provider.setOnMidiDeviceAttachedListener(listener);
+            service._provider.connectGatt(_bluetooth);
+        }
     }
 
     MidiInputDevice _input;
