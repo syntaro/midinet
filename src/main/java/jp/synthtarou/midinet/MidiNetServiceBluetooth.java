@@ -121,6 +121,7 @@ public class MidiNetServiceBluetooth extends MidiNetService {
                     MidiNetDeviceInfo info = new MidiNetDeviceInfoBluetooth(this, name, address, device);
                     info._hasOutput = true;
                     info._hasInput = true;
+                    recordDeviceDetected(info);
                     break;
                 }
             }
